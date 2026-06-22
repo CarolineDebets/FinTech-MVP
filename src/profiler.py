@@ -136,12 +136,12 @@ def get_saved_profile() -> Optional[UserProfile]:
     return st.session_state.get("user_profile")
 
 
-def render_user_input_form(key_prefix: str = "main") -> Optional[UserProfile]:
+def render_user_input_form(key_prefix: str = "main", show_summary: bool = True) -> Optional[UserProfile]:
     """
     Render the Streamlit user input form.
     On successful submit:
     - saves profile to st.session_state
-    - shows a confirmation summary
+    - optionally shows a confirmation summary
     - returns the UserProfile
     """
     form_key = f"user_input_form_{key_prefix}"
@@ -285,25 +285,26 @@ def render_user_input_form(key_prefix: str = "main") -> Optional[UserProfile]:
         st.session_state["user_profile"] = profile
         st.session_state["user_profile_dict"] = profile.to_dict()
 
-        st.success("Basisscenario berekend en profiel opgeslagen.")
-        st.subheader("Samenvatting van uw gegevens")
+        if show_summary:
+            st.success("Basisscenario berekend en profiel opgeslagen.")
+            st.subheader("Samenvatting van uw gegevens")
 
-        left, right = st.columns(2)
+            left, right = st.columns(2)
 
-        with left:
-            st.write(f"Leeftijd: {profile.leeftijd}")
-            st.write(f"Gewenste pensioenleeftijd: {profile.gewenste_pensioenleeftijd}")
-            st.write(f"Huishoudtype: {profile.huishoudtype}")
-            st.write(f"Partner aanwezig: {'Ja' if profile.partner_aanwezig else 'Nee'}")
-            st.write(f"Aantal kinderen: {profile.aantal_kinderen}")
-            st.write(f"Werkstatus: {profile.werkstatus}")
+            with left:
+                st.write(f"Leeftijd: {profile.leeftijd}")
+                st.write(f"Gewenste pensioenleeftijd: {profile.gewenste_pensioenleeftijd}")
+                st.write(f"Huishoudtype: {profile.huishoudtype}")
+                st.write(f"Partner aanwezig: {'Ja' if profile.partner_aanwezig else 'Nee'}")
+                st.write(f"Aantal kinderen: {profile.aantal_kinderen}")
+                st.write(f"Werkstatus: {profile.werkstatus}")
 
-        with right:
-            st.write(f"Huidig vermogen: €{profile.huidig_vermogen:,.2f}")
-            st.write(f"Huidige pensioenopbouw: €{profile.huidige_pensioenopbouw:,.2f}")
-            st.write(f"Maandelijkse extra inleg: €{profile.maandelijkse_extra_inleg:,.2f}")
-            st.write(f"Gewenst pensioeninkomen: €{profile.gewenst_pensioeninkomen:,.2f}")
-            st.write(f"Risicoprofiel: {profile.risicoprofiel}")
+            with right:
+                st.write(f"Huidig vermogen: €{profile.huidig_vermogen:,.2f}")
+                st.write(f"Huidige pensioenopbouw: €{profile.huidige_pensioenopbouw:,.2f}")
+                st.write(f"Maandelijkse extra inleg: €{profile.maandelijkse_extra_inleg:,.2f}")
+                st.write(f"Gewenst pensioeninkomen: €{profile.gewenst_pensioeninkomen:,.2f}")
+                st.write(f"Risicoprofiel: {profile.risicoprofiel}")
 
         return profile
 
@@ -313,5 +314,4 @@ def render_user_input_form(key_prefix: str = "main") -> Optional[UserProfile]:
 if __name__ == "__main__":
     st.set_page_config(page_title="SmartRetireNL - Profiler", layout="centered")
     render_user_input_form()
-
 
