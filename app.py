@@ -2,19 +2,26 @@ import streamlit as st
 import plotly.express as px
 
 from src.simulation import build_demo_projection
-
 from src.profiler import render_user_input_form, get_saved_profile
+
 
 st.set_page_config(
     page_title="SmartRetireNL",
     page_icon="SR",
-    layout="centered",
+    layout="wide",
 )
+
 
 if "page" not in st.session_state:
     st.session_state["page"] = "landing"
 
+
 page = st.session_state["page"]
+
+
+def format_eur_k(value: float) -> str:
+    """Format numbers like 610000 as EUR 610K."""
+    return f"EUR {value / 1000:.0f}K"
 
 
 def render_landing_page() -> None:
@@ -63,20 +70,32 @@ def render_results_dashboard() -> None:
 
     projection = build_demo_projection()
 
-    median_col, chance_col, gap_col, risk_col = st.columns(4)
-    median_col.metric(
-        "Verwachte mediane pensioenpot",
-        f"EUR {projection['median_pot']:,.0f}",
-    )
-    chance_col.metric(
-        "Kans om het doel te halen",
-        f"{projection['chance_of_target']:.0%}",
-    )
-    gap_col.metric(
-        "Verwacht pensioengat",
-        f"EUR {projection['pension_gap']:,.0f}",
-    )
-    risk_col.metric("Risicolabel", projection["risk_label"])
+    row1_col1, row1_col2 = st.columns(2)
+    row2_col1, row2_col2 = st.columns(2)
+
+    with row1_col1:
+        st.metric(
+            "Verwachte mediane pensioenpot",
+            format_eur_k(projection["median_pot"]),
+        )
+
+    with row1_col2:
+        st.metric(
+            "Kans om het doel te halen",
+            f"{projection['chance_of_target']:.0%}",
+        )
+
+    with row2_col1:
+        st.metric(
+            "Verwacht pensioengat",
+            format_eur_k(projection["pension_gap"]),
+        )
+
+    with row2_col2:
+        st.metric(
+            "Risicolabel",
+            projection["risk_label"],
+        )
 
     fig = px.histogram(
         projection["outcomes"],
@@ -84,12 +103,14 @@ def render_results_dashboard() -> None:
         labels={"value": "Verwachte pensioenpot", "count": "Simulatieruns"},
         title="Uitkomsten Monte Carlo-simulatie",
     )
+
     fig.add_vline(
         x=projection["target_pot"],
         line_dash="dash",
         line_color="red",
         annotation_text="Doel",
     )
+
     fig.update_layout(showlegend=False)
 
     st.plotly_chart(fig, use_container_width=True)
@@ -135,10 +156,12 @@ def render_results_page() -> None:
     render_results_dashboard()
 
     back_col, next_col = st.columns(2)
+
     with back_col:
         if st.button("Terug", key="results_back"):
             st.session_state["page"] = "profiler"
             st.rerun()
+
     with next_col:
         if st.button("Bekijk belasting- en pensioeninzichten", type="primary"):
             st.session_state["page"] = "insights"
@@ -171,3 +194,4 @@ elif page == "insights":
 else:
     st.session_state["page"] = "landing"
     st.rerun()
+
