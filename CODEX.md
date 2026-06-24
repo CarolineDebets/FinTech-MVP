@@ -489,3 +489,154 @@ The current MVP does not include:
 - AI-generated action plan
 - Database persistence
 - Complete automated test coverage
+
+
+
+PROMPT: Add a simple profiler utility in `src/profiler.py` that can be used as a decorator to measure execution time of functions and optionally write results to a CSV file.
+
+OUTPUT: 
+```python
+import time
+import csv
+from functools import wraps
+from pathlib import Path
+
+RESULTS_FILE = Path(".profile_results.csv")
+
+def profile(write_csv: bool = True):
+	def decorator(fn):
+		@wraps(fn)
+		def wrapper(*args, **kwargs):
+			start = time.perf_counter()
+			result = fn(*args, **kwargs)
+			elapsed = time.perf_counter() - start
+			if write_csv:
+				header = not RESULTS_FILE.exists()
+				with RESULTS_FILE.open("a", newline="") as f:
+					writer = csv.writer(f)
+					if header:
+						writer.writerow(["function", "elapsed_seconds"])
+					writer.writerow([fn.__name__, f"{elapsed:.6f}"])
+			return result
+		return wrapper
+	return decorator
+
+if __name__ == "__main__":
+	# quick demo
+	@profile()
+	def busy(n=1000000):
+		s = 0
+		for i in range(n):
+			s += i
+		return s
+
+	busy(100000)
+```
+
+PROMPT: I want `app.py` to expose an endpoint `/profile-run` that triggers a sample profiling run using the profiler utility and returns a small summary.
+
+OUTPUT:
+```python
+from flask import Flask, jsonify
+from src.profiler import profile, RESULTS_FILE
+from src.simulation import run_simulation  # hypothetical heavy task
+import csv
+
+app = Flask(__name__)
+
+@app.route("/profile-run")
+def profile_run():
+	# run a short profiled task
+	@profile(write_csv=False)
+	def task():
+		return run_simulation(iterations=1000)
+
+	task()
+
+	# read last results if file exists
+	summary = {"message": "profiling completed", "results": []}
+	try:
+		with RESULTS_FILE.open() as f:
+			reader = csv.reader(f)
+			next(reader, None)
+			for row in reader:
+				summary["results"].append({"function": row[0], "elapsed": float(row[1])})
+	except FileNotFoundError:
+		pass
+
+	return jsonify(summary)
+
+if __name__ == "__main__":
+	app.run(port=5000)
+```
+
+PROMPT: Show an example output of running the profiler on `run_simulation()` and what the CSV and JSON summary might look like.
+
+OUTPUT:
+CSV contents (example):
+```
+function,elapsed_seconds
+run_simulation,0.123456
+process_step,0.078910
+compute_tax,0.010234
+```
+
+JSON summary (example returned by `/profile-run`):
+```json
+{
+  "message": "profiling completed",
+  "results": [
+	{"function": "run_simulation", "elapsed": 0.123456},
+	{"function": "process_step", "elapsed": 0.07891}
+  ]
+}
+```
+
+PROMPT: Provide a small pytest unit test for the profiler decorator that asserts the CSV file receives a row.
+
+OUTPUT:
+```python
+import tempfile
+from pathlib import Path
+from src.profiler import profile, RESULTS_FILE
+
+def test_profile_writes_csv(tmp_path, monkeypatch):
+	tmpfile = tmp_path / "out.csv"
+	monkeypatch.setattr('src.profiler.RESULTS_FILE', tmpfile)
+
+	@profile(write_csv=True)
+	def fast():
+		return sum(range(10))
+
+	fast()
+	assert tmpfile.exists()
+	text = tmpfile.read_text()
+	assert 'fast' in text
+```
+
+PROMPT: Suggest a minimal change to `src/profiler.py` to support disabling CSV writes via an environment variable.
+
+OUTPUT:
+```python
+import os
+
+WRITE_CSV_DEFAULT = os.getenv('PROFILE_WRITE_CSV', '1') == '1'
+
+def profile(write_csv: bool = None):
+	if write_csv is None:
+		write_csv = WRITE_CSV_DEFAULT
+	def decorator(fn):
+		# existing wrapper code
+		...
+	return decorator
+```
+
+PROMPT: Add a README note describing how to use the `/profile-run` endpoint and where results are saved.
+
+OUTPUT:
+```
+Endpoint: GET /profile-run
+- Runs a short profiled task and returns a JSON summary.
+- Results saved to `.profile_results.csv` in the repo root by default.
+- Control CSV writes with env var: PROFILE_WRITE_CSV=0
+```
